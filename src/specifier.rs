@@ -6,8 +6,9 @@ pub enum Specifier {
     Point(Ordinal),
     Range(Ordinal, Ordinal),
     NamedRange(String, String),
-    MonthLastDay(String),
-    MonthLastWorkDay(Ordinal, Pattern),
+    MonthLast(Pattern),
+    MonthLastWithNum(Ordinal, Pattern),
+    MonthWeek(Ordinal, Ordinal, Pattern),
 }
 
 // Separating out a root specifier allows for a higher tiered specifier, allowing us to achieve

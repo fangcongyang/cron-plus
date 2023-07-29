@@ -292,12 +292,20 @@ where
                     .into()),
                 }
             }
-            MonthLastDay(_) => {
+            MonthLast(_) => {
+                // let mut os = OrdinalSet::new();
+                // os.insert(num);
                 Ok(OrdinalSet::new())
             }
-            MonthLastWorkDay(day, _) => {
+            MonthLastWithNum(num, _) => {
                 let mut os = OrdinalSet::new();
-                os.insert(day);
+                os.insert(num);
+                Ok(os)
+            },
+            MonthWeek(week, week_num, _) => {
+                let mut os = OrdinalSet::new();
+                os.insert(week);
+                os.insert(week_num);
                 Ok(os)
             },
         }
@@ -330,10 +338,15 @@ where
     fn pattern_from_specifier(specifier: &Specifier) -> Result<Pattern, Error> {
         use self::Specifier::*;
         match specifier {
-            MonthLastDay(pattern) => {
+            MonthLast(pattern) => {
                 Ok(pattern.to_string())
             }
-            MonthLastWorkDay(_start, pattern) => Ok(pattern.to_string()),
+            MonthLastWithNum(_, pattern) => {
+                Ok(pattern.to_string())
+            }
+            MonthWeek(_, _, pattern) => {
+                Ok(pattern.to_string())
+            }
             _ => Ok("vulue".into()),
         }
     }

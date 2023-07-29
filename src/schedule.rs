@@ -51,19 +51,30 @@ impl Schedule {
             for month in self.fields.months.ordinals().range(month_range).cloned() {
                 let day_of_month_start = query.day_of_month_lower_bound();
                 let day_of_month_end = days_in_month(month, year);
-                let mut ordinals = OrdinalSet::new(); 
-                match self.fields.days_of_month.matching_pattern() {
+                let mut ordinals = OrdinalSet::new();
+                match self.fields.days_of_week.matching_pattern() {
                     "L" => {
-                        ordinals.insert(day_of_month_end);
+                        ordinals = ((day_of_month_end - 7)..day_of_month_end + 1).collect();
                     },
-                    "W" => {
-                        let day = self.fields.days_of_month.ordinals().iter().nth(0).unwrap();
-                        let current_day = NaiveDate::from_ymd_opt(year as i32, month, *day).unwrap();
-                        let last_work_day = get_nearest_weekday(current_day);
-                        ordinals.insert(last_work_day.day());
-                    }
+                    "#" => {
+                        let week_num = self.fields.days_of_month.ordinals().iter().nth(1).unwrap();
+                        ordinals = (((week_num - 1)*7 + 1)..(week_num*7 + 1)).collect();
+                    },
                     _ => {
-                        ordinals = self.fields.days_of_month.ordinals().clone();
+                        match self.fields.days_of_month.matching_pattern() {
+                            "L" => {
+                                ordinals.insert(day_of_month_end);
+                            },
+                            "W" => {
+                                let day = self.fields.days_of_month.ordinals().iter().nth(0).unwrap();
+                                let current_day = NaiveDate::from_ymd_opt(year as i32, month, *day).unwrap();
+                                let last_work_day = get_nearest_weekday(current_day);
+                                ordinals.insert(last_work_day.day());
+                            }
+                            _ => {
+                                ordinals = self.fields.days_of_month.ordinals().clone();
+                            },
+                        };
                     },
                 };
                 if !ordinals.contains(&day_of_month_start) {
@@ -99,11 +110,23 @@ impl Schedule {
                                 let candidate_result = timezone.with_ymd_and_hms(year as i32, month, day_of_month, hour, minute, second).single();
                                 match candidate_result {
                                     Some(candidate) => {
-                                        if !self
-                                        .fields
-                                        .days_of_week
-                                        .ordinals()
-                                        .contains(&candidate.weekday().number_from_sunday())
+                                        let mut ordinals = OrdinalSet::new(); 
+                                        match self.fields.days_of_week.matching_pattern() {
+                                            "L" => {
+                                                let num = self.fields.days_of_month.ordinals().iter().nth(0).unwrap();
+                                                let week_day = Weekday::try_from(*num as u8).unwrap();
+                                                ordinals.insert(week_day.num_days_from_sunday());
+                                            },
+                                            "#" => {
+                                                let week = self.fields.days_of_month.ordinals().iter().nth(0).unwrap();
+                                                let week_day = Weekday::try_from(*week as u8).unwrap();
+                                                ordinals.insert(week_day.num_days_from_sunday());
+                                            },
+                                            _ => {
+                                                ordinals = self.fields.days_of_week.ordinals().clone();
+                                            },
+                                        };
+                                        if !ordinals.contains(&candidate.weekday().number_from_sunday())
                                         {
                                             continue 'day_loop;
                                         }
@@ -152,20 +175,31 @@ impl Schedule {
                 let day_of_month_end = days_in_month(month, year).min(day_of_month_end);
                 
                 let mut ordinals = OrdinalSet::new(); 
-                match self.fields.days_of_month.matching_pattern() {
+                match self.fields.days_of_week.matching_pattern() {
                     "L" => {
-                        ordinals.insert(day_of_month_end);
+                        ordinals = ((day_of_month_end - 7)..day_of_month_end + 1).collect();
                     },
-                    "W" => {
-                        let day = self.fields.days_of_month.ordinals().iter().nth(0).unwrap();
-                        let current_day = NaiveDate::from_ymd_opt(year as i32, month, *day).unwrap();
-                        let last_work_day = get_nearest_weekday(current_day);
-                        ordinals.insert(last_work_day.day());
-                    }
+                    "#" => {
+                        let week_num = self.fields.days_of_month.ordinals().iter().nth(1).unwrap();
+                        ordinals = (((week_num - 1)*7 + 1)..(week_num*7 + 1)).collect();
+                    },
                     _ => {
-                        ordinals = self.fields.days_of_month.ordinals().clone();
-                    },
-                };
+                        match self.fields.days_of_month.matching_pattern() {
+                            "L" => {
+                                ordinals.insert(day_of_month_end);
+                            },
+                            "W" => {
+                                let day = self.fields.days_of_month.ordinals().iter().nth(0).unwrap();
+                                let current_day = NaiveDate::from_ymd_opt(year as i32, month, *day).unwrap();
+                                let last_work_day = get_nearest_weekday(current_day);
+                                ordinals.insert(last_work_day.day());
+                            }
+                            _ => {
+                                ordinals = self.fields.days_of_month.ordinals().clone();
+                            },
+                        };
+                    }
+                }
                 if !ordinals.contains(&day_of_month_end) {
                     query.reset_day_of_month();
                 }
@@ -205,11 +239,23 @@ impl Schedule {
                                 let candidate_result = timezone.with_ymd_and_hms(year as i32, month, day_of_month, hour, minute, second).single();
                                 match candidate_result {
                                     Some(candidate) => {
-                                        if !self
-                                        .fields
-                                        .days_of_week
-                                        .ordinals()
-                                        .contains(&candidate.weekday().number_from_sunday())
+                                        let mut ordinals = OrdinalSet::new(); 
+                                        match self.fields.days_of_week.matching_pattern() {
+                                            "L" => {
+                                                let num = self.fields.days_of_month.ordinals().iter().nth(0).unwrap();
+                                                let week_day = Weekday::try_from(*num as u8).unwrap();
+                                                ordinals.insert(week_day.num_days_from_sunday());
+                                            },
+                                            "#" => {
+                                                let week = self.fields.days_of_month.ordinals().iter().nth(0).unwrap();
+                                                let week_day = Weekday::try_from(*week as u8).unwrap();
+                                                ordinals.insert(week_day.num_days_from_sunday());
+                                            },
+                                            _ => {
+                                                ordinals = self.fields.days_of_week.ordinals().clone();
+                                            },
+                                        };
+                                        if !ordinals.contains(&candidate.weekday().number_from_sunday())
                                         {
                                             continue 'day_loop;
                                         }
@@ -476,6 +522,16 @@ fn get_nearest_weekday(date: NaiveDate) -> NaiveDate {
         Weekday::Sun => date.succ_opt().unwrap(),
         _ => date,
     }
+}
+
+fn get_last_weekday(year: u32, month: u32, weekday: Weekday) -> Option<NaiveDate> {
+    let days = days_in_month(year, month);
+    let mut date = NaiveDate::from_ymd_opt(year.try_into().unwrap(), month, 1).unwrap().with_day(days)?;
+    println!("-> {:?}", date);
+    while date.weekday() != weekday {
+        date = date.pred_opt().unwrap();
+    }
+    Some(date)
 }
 
 #[cfg(test)]

@@ -68,7 +68,7 @@ mod tests {
 
     #[test]
     fn test_parse_month_last() {
-        let expression = "0 0 0 L * ?";
+        let expression = "0 0 0 * * 2#2";
         let schedule = Schedule::from_str(expression).unwrap();
         for datetime in schedule.upcoming(Utc).take(10) {
           println!("-> {}", datetime);

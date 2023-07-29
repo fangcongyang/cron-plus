@@ -22,7 +22,10 @@ impl FromStr for Schedule {
             Ok((_, schedule_fields)) => {
                 Ok(Schedule::new(String::from(expression), schedule_fields))
             } // Extract from nom tuple
-            Err(_) => Err(ErrorKind::Expression("Invalid cron expression.".to_owned()).into()), //TODO: Details
+            Err(e) => {
+                println!("异常信息：{:?}", e);
+                Err(ErrorKind::Expression("Invalid cron expression.".to_owned()).into())
+            }, //TODO: Details
         }
     }
 }
@@ -119,20 +122,34 @@ fn daymonth_last_day_name(i: &str) -> IResult<&str, String> {
 
 fn month_last_day(i: &str) -> IResult<&str, Specifier> {
     let (i, n) = daymonth_last_day_name(i)?;
-    Ok((i, Specifier::MonthLastDay(n)))
+    Ok((i, Specifier::MonthLast(n)))
+}
+
+fn month_last(i: &str) -> IResult<&str, Specifier> {
+    map(
+        pair(ordinal, tag("L")),
+        |(num, pattern)| {
+            Specifier::MonthLastWithNum(num, pattern.to_string())
+    })(i)
 }
 
 fn month_last_word_day(i: &str) -> IResult<&str, Specifier> {
     map(
         pair(ordinal, tag("W")),
         |(start, pattern)| {
-            Specifier::MonthLastWorkDay(start, pattern.to_string())
+            Specifier::MonthLastWithNum(start, pattern.to_string())
     })(i)
 }
 
 fn named_range(i: &str) -> IResult<&str, Specifier> {
     map(separated_pair(name, tag("-"), name), |(start, end)| {
         Specifier::NamedRange(start, end)
+    })(i)
+}
+
+fn month_week(i: &str) -> IResult<&str, Specifier> {
+    map(separated_pair(ordinal, tag("#"), ordinal), |(week, week_num)| {
+        Specifier::MonthWeek(week, week_num, "#".to_string())
     })(i)
 }
 
@@ -147,7 +164,7 @@ fn any(i: &str) -> IResult<&str, Specifier> {
 }
 
 fn specifier(i: &str) -> IResult<&str, Specifier> {
-    alt((all, range, month_last_word_day, month_last_day, point, named_range))(i)
+    alt((all, range, month_last_word_day, month_last_day, month_last, month_week, point, named_range))(i)
 }
 
 fn specifier_with_any(i: &str) -> IResult<&str, Specifier> {
