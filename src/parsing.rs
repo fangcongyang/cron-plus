@@ -60,14 +60,16 @@ where
             { return Ok(T::all()); }
         let mut ordinals = OrdinalSet::new(); 
         let mut matching_pattern: Pattern = "value".into();
+        let mut ordinalList = OrdinalList::new(); 
         for specifier in field.specifiers {
-            matching_pattern = T::pattern_from_root_specifier(&specifier)?;
-            let specifier_ordinals: OrdinalSet = T::ordinals_from_root_specifier(&specifier)?;
+            let (specifier_ordinals, pattern, ol): (OrdinalSet, Pattern, OrdinalList) = T::ordinals_from_root_specifier(&specifier)?;
+            matching_pattern = pattern;
+            ordinalList = ol;
             for ordinal in specifier_ordinals {
                 ordinals.insert(T::validate_ordinal(ordinal)?);
             }
         }
-        Ok(T::from_ordinal_set(ordinals, matching_pattern))
+        Ok(T::from_ordinal_set(ordinals, matching_pattern, ordinalList))
     }
 }
 
@@ -208,11 +210,11 @@ fn field_with_any(i: &str) -> IResult<&str, Field> {
 fn shorthand_yearly(i: &str) -> IResult<&str, ScheduleFields> {
     let (i, _) = tag("@yearly")(i)?;
     let fields = ScheduleFields::new(
-        Seconds::from_ordinal(0, "value".into()),
-        Minutes::from_ordinal(0, "value".into()),
-        Hours::from_ordinal(0, "value".into()),
-        DaysOfMonth::from_ordinal(1, "value".into()),
-        Months::from_ordinal(1, "value".into()),
+        Seconds::from_ordinal(0, "value".into(), OrdinalList::new()),
+        Minutes::from_ordinal(0, "value".into(), OrdinalList::new()),
+        Hours::from_ordinal(0, "value".into(), OrdinalList::new()),
+        DaysOfMonth::from_ordinal(1, "value".into(), OrdinalList::new()),
+        Months::from_ordinal(1, "value".into(), OrdinalList::new()),
         DaysOfWeek::all(),
         Years::all(),
     );
@@ -222,10 +224,10 @@ fn shorthand_yearly(i: &str) -> IResult<&str, ScheduleFields> {
 fn shorthand_monthly(i: &str) -> IResult<&str, ScheduleFields> {
     let (i, _) = tag("@monthly")(i)?;
     let fields = ScheduleFields::new(
-        Seconds::from_ordinal(0, "value".into()),
-        Minutes::from_ordinal(0, "value".into()),
-        Hours::from_ordinal(0, "value".into()),
-        DaysOfMonth::from_ordinal(1, "value".into()),
+        Seconds::from_ordinal(0, "value".into(), OrdinalList::new()),
+        Minutes::from_ordinal(0, "value".into(), OrdinalList::new()),
+        Hours::from_ordinal(0, "value".into(), OrdinalList::new()),
+        DaysOfMonth::from_ordinal(1, "value".into(), OrdinalList::new()),
         Months::all(),
         DaysOfWeek::all(),
         Years::all(),
@@ -236,12 +238,12 @@ fn shorthand_monthly(i: &str) -> IResult<&str, ScheduleFields> {
 fn shorthand_weekly(i: &str) -> IResult<&str, ScheduleFields> {
     let (i, _) = tag("@weekly")(i)?;
     let fields = ScheduleFields::new(
-        Seconds::from_ordinal(0, "value".into()),
-        Minutes::from_ordinal(0, "value".into()),
-        Hours::from_ordinal(0, "value".into()),
+        Seconds::from_ordinal(0, "value".into(), OrdinalList::new()),
+        Minutes::from_ordinal(0, "value".into(), OrdinalList::new()),
+        Hours::from_ordinal(0, "value".into(), OrdinalList::new()),
         DaysOfMonth::all(),
         Months::all(),
-        DaysOfWeek::from_ordinal(1, "value".into()),
+        DaysOfWeek::from_ordinal(1, "value".into(), OrdinalList::new()),
         Years::all(),
     );
     Ok((i, fields))
@@ -250,9 +252,9 @@ fn shorthand_weekly(i: &str) -> IResult<&str, ScheduleFields> {
 fn shorthand_daily(i: &str) -> IResult<&str, ScheduleFields> {
     let (i, _) = tag("@daily")(i)?;
     let fields = ScheduleFields::new(
-        Seconds::from_ordinal(0, "value".into()),
-        Minutes::from_ordinal(0, "value".into()),
-        Hours::from_ordinal(0, "value".into()),
+        Seconds::from_ordinal(0, "value".into(), OrdinalList::new()),
+        Minutes::from_ordinal(0, "value".into(), OrdinalList::new()),
+        Hours::from_ordinal(0, "value".into(), OrdinalList::new()),
         DaysOfMonth::all(),
         Months::all(),
         DaysOfWeek::all(),
@@ -264,8 +266,8 @@ fn shorthand_daily(i: &str) -> IResult<&str, ScheduleFields> {
 fn shorthand_hourly(i: &str) -> IResult<&str, ScheduleFields> {
     let (i, _) = tag("@hourly")(i)?;
     let fields = ScheduleFields::new(
-        Seconds::from_ordinal(0, "value".into()),
-        Minutes::from_ordinal(0, "value".into()),
+        Seconds::from_ordinal(0, "value".into(), OrdinalList::new()),
+        Minutes::from_ordinal(0, "value".into(), OrdinalList::new()),
         Hours::all(),
         DaysOfMonth::all(),
         Months::all(),

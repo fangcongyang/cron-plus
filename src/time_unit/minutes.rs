@@ -1,4 +1,4 @@
-use crate::ordinal::{Ordinal, OrdinalSet, Pattern};
+use crate::ordinal::{Ordinal, OrdinalSet, Pattern, OrdinalList};
 use crate::time_unit::TimeUnitField;
 use std::borrow::Cow;
 use once_cell::sync::Lazy;
@@ -8,14 +8,16 @@ static ALL: Lazy<OrdinalSet> = Lazy::new(|| { Minutes::supported_ordinals() });
 #[derive(Clone, Debug, Eq)]
 pub struct Minutes{
     ordinals: Option<OrdinalSet>, 
-    pattern: Pattern
+    pattern: Pattern,
+    ordinal_list: OrdinalList
 }
 
 impl TimeUnitField for Minutes {
-    fn from_optional_ordinal_set(ordinal_set: Option<OrdinalSet>, pattern: Pattern) -> Self {
+    fn from_optional_ordinal_set(ordinal_set: Option<OrdinalSet>, pattern: Pattern, ordinal_list: OrdinalList) -> Self {
         Minutes{
             ordinals: ordinal_set,
-            pattern
+            pattern,
+            ordinal_list
         }
     }
     fn name() -> Cow<'static, str> {
@@ -32,6 +34,9 @@ impl TimeUnitField for Minutes {
             Some(ordinal_set) => ordinal_set,
             None => &ALL
         }
+    }
+    fn ordinal_list(&self) -> &OrdinalList {
+        &self.ordinal_list
     }
     fn matching_pattern(&self) -> &str {
         &self.pattern

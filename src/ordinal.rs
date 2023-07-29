@@ -6,5 +6,6 @@ pub type Ordinal = u32;
 // `All` can iterate from inclusive_min to inclusive_max and answer membership
 // queries
 pub type OrdinalSet = BTreeSet<Ordinal>;
+pub type OrdinalList = Vec<Ordinal>;
 
 pub type Pattern = String;

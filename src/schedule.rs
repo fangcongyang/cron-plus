@@ -57,7 +57,7 @@ impl Schedule {
                         ordinals = ((day_of_month_end - 7)..day_of_month_end + 1).collect();
                     },
                     "#" => {
-                        let week_num = self.fields.days_of_month.ordinals().iter().nth(1).unwrap();
+                        let week_num = self.fields.days_of_week.ordinal_list()[1];
                         ordinals = (((week_num - 1)*7 + 1)..(week_num*7 + 1)).collect();
                     },
                     _ => {
@@ -113,14 +113,12 @@ impl Schedule {
                                         let mut ordinals = OrdinalSet::new(); 
                                         match self.fields.days_of_week.matching_pattern() {
                                             "L" => {
-                                                let num = self.fields.days_of_month.ordinals().iter().nth(0).unwrap();
-                                                let week_day = Weekday::try_from(*num as u8).unwrap();
-                                                ordinals.insert(week_day.num_days_from_sunday());
+                                                let num = self.fields.days_of_week.ordinals().iter().nth(0).unwrap();
+                                                ordinals.insert(*num);
                                             },
                                             "#" => {
-                                                let week = self.fields.days_of_month.ordinals().iter().nth(0).unwrap();
-                                                let week_day = Weekday::try_from(*week as u8).unwrap();
-                                                ordinals.insert(week_day.num_days_from_sunday());
+                                                let week = self.fields.days_of_week.ordinal_list()[0];
+                                                ordinals.insert(week);
                                             },
                                             _ => {
                                                 ordinals = self.fields.days_of_week.ordinals().clone();
@@ -180,7 +178,7 @@ impl Schedule {
                         ordinals = ((day_of_month_end - 7)..day_of_month_end + 1).collect();
                     },
                     "#" => {
-                        let week_num = self.fields.days_of_month.ordinals().iter().nth(1).unwrap();
+                        let week_num = self.fields.days_of_week.ordinal_list()[1];
                         ordinals = (((week_num - 1)*7 + 1)..(week_num*7 + 1)).collect();
                     },
                     _ => {
@@ -243,13 +241,11 @@ impl Schedule {
                                         match self.fields.days_of_week.matching_pattern() {
                                             "L" => {
                                                 let num = self.fields.days_of_month.ordinals().iter().nth(0).unwrap();
-                                                let week_day = Weekday::try_from(*num as u8).unwrap();
-                                                ordinals.insert(week_day.num_days_from_sunday());
+                                                ordinals.insert(*num);
                                             },
                                             "#" => {
-                                                let week = self.fields.days_of_month.ordinals().iter().nth(0).unwrap();
-                                                let week_day = Weekday::try_from(*week as u8).unwrap();
-                                                ordinals.insert(week_day.num_days_from_sunday());
+                                                let week = self.fields.days_of_week.ordinal_list()[0];
+                                                ordinals.insert(week);
                                             },
                                             _ => {
                                                 ordinals = self.fields.days_of_week.ordinals().clone();

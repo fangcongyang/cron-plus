@@ -15,7 +15,7 @@ pub use self::seconds::Seconds;
 pub use self::years::Years;
 
 use crate::error::*;
-use crate::ordinal::{Ordinal, OrdinalSet, Pattern};
+use crate::ordinal::{Ordinal, OrdinalSet, Pattern, OrdinalList};
 use crate::specifier::{RootSpecifier, Specifier};
 use std::borrow::Cow;
 use std::collections::btree_set;
@@ -206,15 +206,16 @@ pub trait TimeUnitField
 where
     Self: Sized,
 {
-    fn from_optional_ordinal_set(ordinal_set: Option<OrdinalSet>, pattern: Pattern) -> Self;
+    fn from_optional_ordinal_set(ordinal_set: Option<OrdinalSet>, pattern: Pattern, ordinal_list: OrdinalList) -> Self;
     fn name() -> Cow<'static, str>;
     fn inclusive_min() -> Ordinal;
     fn inclusive_max() -> Ordinal;
     fn ordinals(&self) -> &OrdinalSet;
+    fn ordinal_list(&self) -> &OrdinalList;
     fn matching_pattern(&self) -> &str;
     
-    fn from_ordinal(ordinal: Ordinal, matching_pattern: String) -> Self {
-        Self::from_ordinal_set(iter::once(ordinal).collect(), matching_pattern)
+    fn from_ordinal(ordinal: Ordinal, matching_pattern: String, ordinal_list: OrdinalList) -> Self {
+        Self::from_ordinal_set(iter::once(ordinal).collect(), matching_pattern, ordinal_list)
     }
     
     fn supported_ordinals() -> OrdinalSet {
@@ -222,11 +223,11 @@ where
     }    
     
     fn all() -> Self {
-        Self::from_optional_ordinal_set(None, "value".to_string())
+        Self::from_optional_ordinal_set(None, "value".to_string(), OrdinalList::new())
     }
     
-    fn from_ordinal_set(ordinal_set: OrdinalSet, matching_pattern: String) -> Self {
-        Self::from_optional_ordinal_set(Some(ordinal_set), matching_pattern)
+    fn from_ordinal_set(ordinal_set: OrdinalSet, matching_pattern: String, ordinal_list: OrdinalList) -> Self {
+        Self::from_optional_ordinal_set(Some(ordinal_set), matching_pattern, ordinal_list)
     }
     
     fn ordinal_from_name(name: &str) -> Result<Ordinal, Error> {
@@ -238,6 +239,7 @@ where
         ))
         .into())
     }
+    
     fn validate_ordinal(ordinal: Ordinal) -> Result<Ordinal, Error> {
         // println!("validate_ordinal for {} => {}", Self::name(), ordinal);
         match ordinal {
@@ -260,15 +262,19 @@ where
         }
     }
 
-    fn ordinals_from_specifier(specifier: &Specifier) -> Result<OrdinalSet, Error> {
+    fn ordinals_from_specifier(specifier: &Specifier) -> Result<(OrdinalSet, Pattern, OrdinalList), Error> {
         use self::Specifier::*;
         //println!("ordinals_from_specifier for {} => {:?}", Self::name(), specifier);
-        match *specifier {
-            All => Ok(Self::supported_ordinals()),
-            Point(ordinal) => Ok((&[ordinal]).iter().cloned().collect()),
+        match specifier {
+            All => Ok((Self::supported_ordinals(), "value".to_string(), OrdinalList::new())),
+            Point(ordinal) => {
+                let mut os = OrdinalSet::new();
+                os.insert(*ordinal);
+                Ok((os, "value".to_string(), OrdinalList::new()))
+            },
             Range(start, end) => {
-                match (Self::validate_ordinal(start), Self::validate_ordinal(end)) {
-                    (Ok(start), Ok(end)) if start <= end => Ok((start..end + 1).collect()),
+                match (Self::validate_ordinal(*start), Self::validate_ordinal(*end)) {
+                    (Ok(start), Ok(end)) if start <= end => Ok(((start..end + 1).collect(), "value".to_string(), OrdinalList::new())),
                     _ => Err(ErrorKind::Expression(format!(
                         "Invalid range for {}: {}-{}",
                         Self::name(),
@@ -282,7 +288,7 @@ where
                 let start = Self::ordinal_from_name(start_name)?;
                 let end = Self::ordinal_from_name(end_name)?;
                 match (Self::validate_ordinal(start), Self::validate_ordinal(end)) {
-                    (Ok(start), Ok(end)) if start <= end => Ok((start..end + 1).collect()),
+                    (Ok(start), Ok(end)) if start <= end => Ok(((start..end + 1).collect(), "value".to_string(), OrdinalList::new())),
                     _ => Err(ErrorKind::Expression(format!(
                         "Invalid named range for {}: {}-{}",
                         Self::name(),
@@ -292,70 +298,44 @@ where
                     .into()),
                 }
             }
-            MonthLast(_) => {
-                // let mut os = OrdinalSet::new();
-                // os.insert(num);
-                Ok(OrdinalSet::new())
+            MonthLast(pattern) => {
+                Ok((OrdinalSet::new(), pattern.to_string(), OrdinalList::new()))
             }
-            MonthLastWithNum(num, _) => {
+            MonthLastWithNum(num, pattern) => {
                 let mut os = OrdinalSet::new();
-                os.insert(num);
-                Ok(os)
+                os.insert(*num);
+                Ok((os, pattern.to_string(), OrdinalList::new()))
             },
-            MonthWeek(week, week_num, _) => {
-                let mut os = OrdinalSet::new();
-                os.insert(week);
-                os.insert(week_num);
-                Ok(os)
+            MonthWeek(week, week_num, pattern) => {
+                let mut os = OrdinalList::new();
+                os.push(*week);
+                os.push(*week_num);
+                Ok((OrdinalSet::new(), pattern.to_string(), os))
             },
         }
     }
 
-    fn ordinals_from_root_specifier(root_specifier: &RootSpecifier) -> Result<OrdinalSet, Error> {
-        let ordinals = match root_specifier {
+    fn ordinals_from_root_specifier(root_specifier: &RootSpecifier) -> Result<(OrdinalSet, Pattern, OrdinalList), Error> {
+        let (ordinals, pattern, ordinal_list) = match root_specifier {
             RootSpecifier::Specifier(specifier) => Self::ordinals_from_specifier(specifier)?,
             RootSpecifier::Period(_, 0) => Err(ErrorKind::Expression(format!("range step cannot be zero")))?,
             RootSpecifier::Period(start, step) => {
-                let base_set = match start {
+                let (base_set, pattern, ordinal_list) = match start {
                     // A point prior to a period implies a range whose start is the specified
                     // point and terminating inclusively with the inclusive max
                     Specifier::Point(start) => {
                         let start = Self::validate_ordinal(*start)?;
-                        (start..=Self::inclusive_max()).collect()
+                        ((start..=Self::inclusive_max()).collect(), "value".to_string(), OrdinalList::new())
                     }
                     specifier => Self::ordinals_from_specifier(specifier)?,
                 };
-                base_set.into_iter().step_by(*step as usize).collect()
+                (base_set.into_iter().step_by(*step as usize).collect(), pattern, ordinal_list)
             }
-            RootSpecifier::NamedPoint(ref name) => (&[Self::ordinal_from_name(name)?])
+            RootSpecifier::NamedPoint(ref name) => ((&[Self::ordinal_from_name(name)?])
                 .iter()
                 .cloned()
-                .collect::<OrdinalSet>(),
+                .collect::<OrdinalSet>(), "value".to_string(), OrdinalList::new()),
         };
-        Ok(ordinals)
-    }
-
-    fn pattern_from_specifier(specifier: &Specifier) -> Result<Pattern, Error> {
-        use self::Specifier::*;
-        match specifier {
-            MonthLast(pattern) => {
-                Ok(pattern.to_string())
-            }
-            MonthLastWithNum(_, pattern) => {
-                Ok(pattern.to_string())
-            }
-            MonthWeek(_, _, pattern) => {
-                Ok(pattern.to_string())
-            }
-            _ => Ok("vulue".into()),
-        }
-    }
-
-    fn pattern_from_root_specifier(root_specifier: &RootSpecifier) -> Result<Pattern, Error> {
-        let pattern = match root_specifier {
-            RootSpecifier::Specifier(specifier) => Self::pattern_from_specifier(specifier)?,
-            _ => "vulue".into(),
-        };
-        Ok(pattern)
+        Ok((ordinals, pattern, ordinal_list))
     }
 }
