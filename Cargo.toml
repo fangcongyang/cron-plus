@@ -1,6 +1,6 @@
 [package]
 name = "cron-plus"
-version = "0.0.1"
+version = "0.0.2"
 authors = ["Zack Slayton <zack.slayton@gmail.com>"]
 repository = "https://github.com/zslayton/cron"
 documentation = "https://docs.rs/cron"
